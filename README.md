@@ -1,0 +1,2 @@
+# PancakeGod
+Small JRPG proj
