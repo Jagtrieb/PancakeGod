@@ -6,3 +6,23 @@ class Weapon:
 class Armor:
     def __init__(self, defense = 0):
         self.defense = defense
+
+
+class Crystal:
+    def __init__(self, charge = 0):
+        self.max_charge = charge
+        self.abilities = {}
+        self.unavailable_abilities = None
+        self.weak_resist = {'phys': 0,
+                            'fire': 0,
+                            'ice': 0,
+                            'wind': 0,
+                            'elec': 0}
+
+        self.charge = self.max_charge
+    
+    def use_ability(self):
+        pass
+    
+    def add_ability(self, ability):
+        self.abilities[ability.name] = ability
