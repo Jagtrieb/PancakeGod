@@ -1,12 +1,12 @@
-from additonals import randchek, Damage
+from additonals import randchek, Damage, load_image
 from equipment import Weapon, Armor, Crystal
 from abilities import Ability, AttackAbility, SupportAbility
-
+import pygame
 
 class Character():
-    def __init__(self, max_HP = 0, crystal = Crystal(0), weapon = Weapon()):
+    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(0), weapon = Weapon()):
+        self.name = name
         self.MaxHP = max_HP
-        self.MaxPP = 0
         self.EXP = 0
         self.LVL = 1
         self.weapon = weapon
@@ -23,12 +23,16 @@ class Character():
                         'AG': 1}
 
         self.party = None
-        self.state = True
+        self.state = 'alive'
         self.HP = max_HP
-        self.PP = 0
         self.weakness_bonus = 1
 
         self.effects = []
+
+        self.battle_card = None
+
+    def __str__(self):
+        return self.name
 
     def weapon_attack(self, target = None):
         if not randchek(self.weapon.accuracy):
@@ -38,6 +42,10 @@ class Character():
         return dmg
 
     def use_skill(self, ability = Ability(),  target = None):
+        if ability.cost > self.crystal.charge:
+            print("Not Enough Crystal charge!\n")
+            return 0
+        self.crystal.charge -= ability.cost
         if type(ability) == AttackAbility:
             self.use_attack_skill(ability, target)
             return 1
@@ -64,6 +72,7 @@ class Character():
         elif self.crystal.weak_resist[incoming_damage.type] == 1:
             self.weakness_bonus = 0.2
             print("!RESIST!")
+        self.battle_card.update()
 
         taken_damage = round((incoming_damage.value * self.weakness_bonus) / (self.bonuses['DEF'] * self.stats['En'] ** 0.5)) + 1
         self.HP -= taken_damage
@@ -74,17 +83,19 @@ class Character():
 
 
 class Enemy(Character):
-    def __init__(self, max_HP = 0, crystal = Crystal()):
-        super().__init__(max_HP, crystal)
+    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(), weapon = Weapon(), img_path = 'assets/images/enemyPlaceholder.png'):
+        super().__init__(name, max_HP, crystal, weapon)
         self.EXP_reward = 0
         self.money_reward = 0
         self.pattern = None
+        self.image = pygame.transform.scale(load_image(img_path), (100, 100))
 
 
 class Ally(Character):
-    def __init__(self, max_HP = 0, crystal = Crystal(), weapon = Weapon(), armor = Armor()):
-        super().__init__(max_HP, crystal, weapon)
+    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(), weapon = Weapon(), armor = Armor(), img_path = 'assets/images/iconPlaceholder.png'):
+        super().__init__(name, max_HP, crystal, weapon)
         self.armor = armor
+        self.icon = pygame.transform.scale(load_image(img_path), (100, 100))
 
     def take_damage(self, incoming_damage):
         evade_odds = self.bonuses['AG'] * self.Ag // 2
@@ -101,7 +112,7 @@ class Ally(Character):
             self.state = False
         return taken_damage
     
-    def defend(self):
+    def guard(self):
         pass
 
     def use_item(self):
@@ -109,8 +120,8 @@ class Ally(Character):
 
 
 class MainCharacter(Ally):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(), weapon = Weapon(), armor = Armor()):
+        super().__init__(name, max_HP, crystal, weapon, armor)
         self.crystals = []
 
     def escape(self):
@@ -121,15 +132,14 @@ class MainCharacter(Ally):
 
 
 if __name__ == '__main__':
-    c = Crystal(50)
+    c = Crystal(3)
     c1 = Crystal(30)
     c1.weak_resist['fire'] = 0
     wp = Weapon(25, 85)
-    chaar = Character(35, c, wp)
-    en = Enemy(25, c1)
-    #print(en.crystal.weak_resist['fire'])
+    chaar = Character('jokaa', 35, c, wp)
+    en = Enemy('churka', 25, c1)
     f = AttackAbility("Agi", 4, 'Ma', 'fire', 50)
     c.add_ability(f)
     print(en.HP)
-    chaar.weapon_attack(en)
+    chaar.use_skill(f)
     print(en.HP)

@@ -1,4 +1,7 @@
 from random import randint
+import pygame
+import sys
+import os
 
 ELEMENTAL_EFFECTS = {'phys': None,
                      'fire': None,
@@ -48,3 +51,12 @@ class Buff(Effect):
 
 def randchek(base_odds):
     return True if randint(0, 100) < base_odds else False
+
+def load_image(name, colorkey=None):
+    fullname = os.path.join('data', name)
+    # если файл не существует, то выходим
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением '{fullname}' не найден")
+        sys.exit()
+    image = pygame.image.load(fullname)
+    return image
