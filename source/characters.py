@@ -1,7 +1,9 @@
 from additonals import randchek, Damage, load_image
 from equipment import Weapon, Armor, Crystal
 from abilities import Ability, AttackAbility, SupportAbility
+import config
 import pygame
+import sys
 
 class Character():
     def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(0), weapon = Weapon()):
@@ -72,7 +74,6 @@ class Character():
         elif self.crystal.weak_resist[incoming_damage.type] == 1:
             self.weakness_bonus = 0.2
             print("!RESIST!")
-        self.battle_card.update()
 
         taken_damage = round((incoming_damage.value * self.weakness_bonus) / (self.bonuses['DEF'] * self.stats['En'] ** 0.5)) + 1
         self.HP -= taken_damage
@@ -82,13 +83,19 @@ class Character():
         return taken_damage
 
 
-class Enemy(Character):
+class Enemy(Character, pygame.sprite.Sprite):
     def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(), weapon = Weapon(), img_path = 'assets/images/enemyPlaceholder.png'):
         super().__init__(name, max_HP, crystal, weapon)
+        pygame.sprite.Sprite.__init__(self)
         self.EXP_reward = 0
         self.money_reward = 0
         self.pattern = None
         self.image = pygame.transform.scale(load_image(img_path), (100, 100))
+        self.rect = self.image.get_rect()
+    
+    def sprite_center(self):
+        #print(f'x: {self.rect.x} y: {self.rect.y} w: {self.rect.width} h:{self.rect.height}')
+        return (self.rect.x + self.rect.width // 2), (self.rect.y + self.rect.height // 2)
 
 
 class Ally(Character):
@@ -110,6 +117,7 @@ class Ally(Character):
         if self.HP <= 0:
             self.HP = 0
             self.state = False
+        self.battle_card.update()
         return taken_damage
     
     def guard(self):
@@ -120,8 +128,8 @@ class Ally(Character):
 
 
 class MainCharacter(Ally):
-    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(), weapon = Weapon(), armor = Armor()):
-        super().__init__(name, max_HP, crystal, weapon, armor)
+    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(), weapon = Weapon(), armor = Armor(), img_path = 'assets/images/iconPlaceholder.png'):
+        super().__init__(name, max_HP, crystal, weapon, armor, img_path)
         self.crystals = []
 
     def escape(self):
@@ -137,9 +145,25 @@ if __name__ == '__main__':
     c1.weak_resist['fire'] = 0
     wp = Weapon(25, 85)
     chaar = Character('jokaa', 35, c, wp)
-    en = Enemy('churka', 25, c1)
+    group = pygame.sprite.Group()
+    en = Enemy('churka', 25, c1, wp)
+    group.add(en)
+    en.rect.x = 100
+    en.rect.y = 100
     f = AttackAbility("Agi", 4, 'Ma', 'fire', 50)
-    c.add_ability(f)
-    print(en.HP)
-    chaar.use_skill(f)
-    print(en.HP)
+
+
+    pygame.init()
+    size = width, height = config.WIDTH, config.HEIGHT
+    screen = pygame.display.set_mode(size)
+    clock = pygame.time.Clock()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+        screen.fill((0, 0, 0))
+        group.draw(screen)
+        pygame.display.flip()
+        clock.tick(config.FPS)

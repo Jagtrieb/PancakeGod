@@ -2,14 +2,22 @@ import pygame
 import party
 import characters
 from equipment import Crystal, Weapon, Armor
-from additonals import randchek
+from additonals import randchek, load_image
 from visuals import draw_battle_layout
+import config
 import sys
 
 class Battle:
-    def __init__(self, team1:party.PlayerParty, team2:party.EnemyParty):
+    def __init__(self, team1:party.PlayerParty, team2:party.EnemyParty, screen = None, clock = None):
         self.team1 = team1
         self.team2 = team2
+        self.screen = screen
+        self.clock = clock
+        self.service_sprites_group = pygame.sprite.Group()
+        self.crosshair = pygame.sprite.Sprite(self.service_sprites_group)
+        self.crosshair.image = pygame.transform.scale(load_image(config.CROSSHAIR), (100, 100))
+        self.crosshair.rect = self.crosshair.image.get_rect()
+
         if randchek(75):
             print('Player Andvantage!')
             self.current_team = self.team1
@@ -19,8 +27,8 @@ class Battle:
             self.current_team = self.team2
             self.target_team = self.team1
     
-    def fight_process(self, screen):
-        self.action_card, self.battle_cards = draw_battle_layout(screen, self.team1)
+    def fight_process(self):
+        self.action_card, self.battle_cards = draw_battle_layout(self.screen, self.team1, self.team2)
         while (not self.team1.isDead) and (not self.team2.isDead):
             self.battle_round()
 
@@ -84,31 +92,38 @@ class Battle:
                                 return 3
 
                 pygame.display.flip()
+                self.clock.tick(config.FPS)
         else:
             print('Hee ho!')
 
     def choose_target(self):
         target_index = 0
-        choiceFlag = False
-        while not choiceFlag:
+
+        while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_LEFT:
-                        print('left')
-                    elif event.key == pygame.K_RIGHT:
-                        print('right')
+                    if event.key == pygame.K_RIGHT:
+                        target_index += 1 if target_index + 1 < len(self.target_team.members) else 0
+                    elif event.key == pygame.K_LEFT:
+                        target_index -= 1 if target_index - 1 >= 0 else 0
+                    elif event.key == pygame.K_z:
+                        draw_battle_layout(self.screen, self.team1, self.team2)
+                        pygame.display.flip()
+                        return self.target_team.members[target_index]
                     elif event.key == pygame.K_x:
+                        draw_battle_layout(self.screen, self.team1, self.team2)
+                        pygame.display.flip()
                         return 0
-        # while not chosen:
-        #     for i, enemy in enumerate(self.target_team.members):
-        #         print(f'{i + 1}. {enemy}')
-        #     answer = int(input())
-        #     if 0 < answer <= len(self.target_team.members):
-        #         chosen = True
-        # return self.target_team.members[answer - 1]
+            self.crosshair.rect.x, self.crosshair.rect.y = self.team2.members[target_index].sprite_center()
+            self.crosshair.rect.x -= self.crosshair.rect.width // 2
+            self.crosshair.rect.y -= self.crosshair.rect.height // 2
+            draw_battle_layout(self.screen, self.team1, self.team2)
+            self.service_sprites_group.draw(self.screen)
+            pygame.display.flip()
+            self.clock.tick(config.FPS)
     
     def choose_ability(self, char):
         chosen = False

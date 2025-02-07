@@ -101,11 +101,12 @@ class ActionFrame(UniversalFrame):
         return self.actions[self.chosen]
 
 
-def draw_battle_layout(screen, team):
+def draw_battle_layout(screen, player_team, enemy_team):
     a_frame = ActionFrame((config.ACTION_X, config.ACTION_Y, config.ACTION_WIDTH, config.ACTION_HEIGHT), config.ACTIONS, screen)
     screen.fill((0, 0, 0))
-    battle_cards = draw_battle_cards(screen, team)
+    battle_cards = draw_battle_cards(screen, player_team)
     a_frame.draw()
+    enemies = draw_enemies(screen, enemy_team)
     return a_frame, battle_cards
 
 
@@ -121,4 +122,13 @@ def draw_battle_cards(screen, team = None):
     return cards
 
 def draw_enemies(screen, team = None):
-    pass
+    enemies_sprite_group = pygame.sprite.Group()
+    enemy_margin = config.EN_FRAME_WIDTH // (len(team.members) * 2 + 1)
+    x = enemy_margin
+    for member in team.members:
+        member.rect.x = x
+        member.rect.y = config.EN_START_Y
+        enemies_sprite_group.add(member)
+        x += 2 * enemy_margin
+    enemies_sprite_group.draw(screen)
+    return enemies_sprite_group
