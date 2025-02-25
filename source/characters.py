@@ -6,9 +6,10 @@ import pygame
 import sys
 
 class Character():
-    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(0), weapon = Weapon()):
+    def __init__(self, name = 'Void', max_HP = 0, max_SP = 0, crystal = Crystal(), weapon = Weapon()):
         self.name = name
         self.MaxHP = max_HP
+        self.MaxSP = max_SP
         self.EXP = 0
         self.LVL = 1
         self.weapon = weapon
@@ -27,10 +28,12 @@ class Character():
         self.party = None
         self.state = 'alive'
         self.HP = max_HP
+        self.SP = max_SP
         self.weakness_bonus = 1
 
         self.effects = []
 
+        self.isActive = False
         self.battle_card = None
 
     def __str__(self):
@@ -40,17 +43,18 @@ class Character():
         if not randchek(self.weapon.accuracy):
             return 0
         dmg = int((0.5 * self.weapon.base_damage * self.stats['St']) ** 0.5 * self.bonuses['ATK'])
-        target.take_damage(Damage(dmg, 'phys'))
-        return dmg
+        dealt_damage, attack_result = target.take_damage(Damage(dmg, 'phys'))
+        command = 'one_more' if attack_result else 'next'
+        return dealt_damage, command
 
-    def use_skill(self, ability = Ability(),  target = None):
-        if ability.cost > self.crystal.charge:
-            print("Not Enough Crystal charge!\n")
-            return 0
-        self.crystal.charge -= ability.cost
+    def use_skill(self, ability_id = -1,  target = None):
+        ability = self.crystal.abilities[ability_id]
+        if ability.cost > self.SP:
+            print("Not Enough SP!\n")
+            return 0, 'next'
+        self.SP -= ability.cost
         if type(ability) == AttackAbility:
-            self.use_attack_skill(ability, target)
-            return 1
+            return self.use_attack_skill(ability, target)
         elif type(ability) == SupportAbility:
             self.use_support_skill(ability, target)
             return 2
@@ -58,19 +62,22 @@ class Character():
     def use_attack_skill(self, ability = AttackAbility(), target = None):
         element = ability.element
         dmg = round((ability.base_damage * self.stats[ability.stat]) ** 0.5 * self.bonuses['ATK'])
-        target.take_damage(Damage(dmg, element))
-        return dmg
+        dealt_damage, attack_result = target.take_damage(Damage(dmg, element))
+        command = 'one_more' if attack_result else 'next'
+        return dealt_damage, command 
 
     def use_support_skill(self, ability = Ability(),  target = None):
         pass
 
     def take_damage(self, incoming_damage):
+        result = 0
         evade_odds = self.bonuses['AG'] * self.stats['Ag'] // 2
         if randchek(evade_odds):
-            return 0
+            return 0, result
         if self.crystal.weak_resist[incoming_damage.type] == -1:
             self.weakness_bonus = 1.5
             print("!WEAK!")
+            result = 1
         elif self.crystal.weak_resist[incoming_damage.type] == 1:
             self.weakness_bonus = 0.2
             print("!RESIST!")
@@ -80,12 +87,20 @@ class Character():
         if self.HP <= 0:
             self.HP = 0
             self.state = False
-        return taken_damage
+        self.weakness_bonus = 1
+        self.bonuses['ATK'] = 1
+        self.bonuses['DEF'] = 1
+        self.bonuses['AG'] = 1
+        print(f'{self.HP}/{self.MaxHP}')
+        return taken_damage, result
+    
+    def __str__(self):
+        return self.name
 
 
 class Enemy(Character, pygame.sprite.Sprite):
-    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(), weapon = Weapon(), img_path = 'assets/images/enemyPlaceholder.png'):
-        super().__init__(name, max_HP, crystal, weapon)
+    def __init__(self, name = 'Void', max_HP = 0, max_SP = 0, crystal = Crystal(), weapon = Weapon(), img_path = 'assets/images/enemyPlaceholder.png'):
+        super().__init__(name, max_HP, max_SP, crystal, weapon)
         pygame.sprite.Sprite.__init__(self)
         self.EXP_reward = 0
         self.money_reward = 0
@@ -95,41 +110,49 @@ class Enemy(Character, pygame.sprite.Sprite):
     
     def sprite_center(self):
         #print(f'x: {self.rect.x} y: {self.rect.y} w: {self.rect.width} h:{self.rect.height}')
-        return (self.rect.x + self.rect.width // 2), (self.rect.y + self.rect.height // 2)
+        return (self.rect.x + self.rect.width // 2 - 50), (self.rect.y + self.rect.height // 2 - 50)
 
 
 class Ally(Character):
-    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(), weapon = Weapon(), armor = Armor(), img_path = 'assets/images/iconPlaceholder.png'):
-        super().__init__(name, max_HP, crystal, weapon)
+    def __init__(self, name = 'Void', max_HP = 0, max_SP = 0, crystal = Crystal(), weapon = Weapon(), armor = Armor(), img_path = 'assets/images/iconPlaceholder.png'):
+        super().__init__(name, max_HP, max_SP, crystal, weapon)
         self.armor = armor
         self.icon = pygame.transform.scale(load_image(img_path), (100, 100))
 
     def take_damage(self, incoming_damage):
+        result = 0
         evade_odds = self.bonuses['AG'] * self.Ag // 2
         if randchek(evade_odds):
             return 0
+        
         if self.crystal.weak_resist[incoming_damage.type] == -1:
             self.weakness_bonus = 1.5
+            result = 1
         elif self.crystal.weak_resist[incoming_damage.type] == 1:
             self.weakness_bonus = 0.2
+        
         taken_damage = round((incoming_damage * self.weakness_bonus) // (self.bonuses['DEF'] * (self.En + self.armor.defense) ** 0.5)) + 1
         self.HP -= taken_damage
         if self.HP <= 0:
             self.HP = 0
             self.state = False
         self.battle_card.update()
-        return taken_damage
+        self.weakness_bonus = 1
+        self.bonuses['ATK'] = 1
+        self.bonuses['DEF'] = 1
+        self.bonuses['AG'] = 1
+        return result
     
     def guard(self):
-        pass
+        self.bonuses['DEF'] *= 2
 
     def use_item(self):
         pass
 
 
 class MainCharacter(Ally):
-    def __init__(self, name = 'Void', max_HP = 0, crystal = Crystal(), weapon = Weapon(), armor = Armor(), img_path = 'assets/images/iconPlaceholder.png'):
-        super().__init__(name, max_HP, crystal, weapon, armor, img_path)
+    def __init__(self, name = 'Void', max_HP = 0, max_SP = 0, crystal = Crystal(), weapon = Weapon(), armor = Armor(), img_path = 'assets/images/iconPlaceholder.png'):
+        super().__init__(name, max_HP, max_SP, crystal, weapon, armor, img_path)
         self.crystals = []
 
     def escape(self):

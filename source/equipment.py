@@ -9,8 +9,7 @@ class Armor:
 
 
 class Crystal:
-    def __init__(self, charge = 1):
-        self.max_charge = charge
+    def __init__(self):
         self.abilities = []
         self.unavailable_abilities = None
         self.weak_resist = {'phys': 0,
@@ -18,11 +17,6 @@ class Crystal:
                             'ice': 0,
                             'wind': 0,
                             'elec': 0}
-
-        self.charge = self.max_charge
-    
-    def use_ability(self):
-        pass
     
     def add_ability(self, ability):
         self.abilities.append(ability)
