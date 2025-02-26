@@ -2,7 +2,7 @@ import pygame
 import characters
 import party
 import equipment
-import additonals
+from additonals import randchek
 import visuals
 import abilities as abt
 from new_batle import create_sequence
@@ -21,9 +21,9 @@ def terminate():
 def battle_screen(team1 = 0, team2 = 0):
     c = equipment.Crystal()
     c1 = equipment.Crystal()
-    agi = abt.AttackAbility('Agi', 3, 'Ma', 'fire', 10)
-    bufu = abt.AttackAbility('Bufu', 4, 'Ma', 'ice', 15)
-    garu = abt.AttackAbility('Garu', 4, 'Ma', 'wind', 15)
+    agi = abt.AttackAbility('Megidolaon', 30, 'Ma', 'Слабая атака огнём', 'fire', 10)
+    bufu = abt.AttackAbility('Samarecarm', 4, 'Ma', 'Слабая атака льдом', 'ice', 15)
+    garu = abt.AttackAbility('Mabufudyne', 4, 'Ma', 'Слабая атака ветром', 'wind', 15)
     abilities = [agi, bufu, bufu, agi, agi, garu]
     c1.abilities = abilities
     c1.weak_resist['phys'] = -1
@@ -31,8 +31,9 @@ def battle_screen(team1 = 0, team2 = 0):
     c.weak_resist['fire'] = 1
     wp = equipment.Weapon(50, 90)
     team = party.PlayerParty([characters.MainCharacter('Joker', 125, 75, c1, wp), characters.Ally('Skull', 150, 50, c, wp), characters.Ally('Panther', 95, 100, c1, wp), characters.Ally('Queen', 100, 95, c1, wp)])
-    en_team = party.EnemyParty([characters.Enemy('Jack Frost', 100, 5, c1), characters.Enemy('Pyro Jack', 75, 5, c), characters.Enemy('King Frost', 150), characters.Enemy('Shit eater', 10)])
+    en_team = party.EnemyParty([characters.Enemy('Jack Frost', 100, 5, 50, c1, wp), characters.Enemy('Pyro Jack', 75, 5, 60, c, wp), characters.Enemy('King Frost', 150, 5, 50, c, wp), characters.Enemy('Shit eater', 10, 5, 50, c, wp)])
     
+
     BATTLE_FINISHED = False
     sequence = create_sequence(team, en_team)
     active_id = 0
@@ -45,8 +46,13 @@ def battle_screen(team1 = 0, team2 = 0):
     action_frame.set_active_char(sequence[active_id])
     service_group.add(action_frame)
     
-    while not BATTLE_FINISHED:
+    if type(sequence[active_id]) != characters.Enemy:
+        action_frame.default_state()
+    else:
+        action_frame.awaiting_state()
 
+    while not BATTLE_FINISHED:
+        result = None
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
@@ -54,11 +60,25 @@ def battle_screen(team1 = 0, team2 = 0):
             elif event.type == pygame.KEYDOWN and type(sequence[active_id]) != characters.Enemy:
                 result = action_frame.key_events(event.key)
                 print(result)
-                if result == 'next':
-                    sequence[active_id].isActive = False
-                    active_id += 1
-                    sequence[active_id].isActive = True
-                    action_frame.set_active_char(sequence[active_id])
+
+        if type(sequence[active_id]) == characters.Enemy:
+            if randchek(sequence[active_id].attack_odds):
+                result = sequence[active_id].attack_character(team.members)
+            else:
+                result = sequence[active_id].support_ally(en_team.members)
+
+        if result == 'next':
+            sequence[active_id].isActive = False
+            active_id += 1
+            if active_id == len(sequence):
+                active_id = 0
+            sequence[active_id].isActive = True
+            action_frame.set_active_char(sequence[active_id])
+            if type(sequence[active_id]) != characters.Enemy:
+                action_frame.default_state()
+            else:
+                action_frame.awaiting_state()
+                
         screen.fill(pygame.Color("black"))
         battle_cards.draw(screen)
         battle_cards.update()

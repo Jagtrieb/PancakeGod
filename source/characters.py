@@ -1,6 +1,7 @@
 from additonals import randchek, Damage, load_image
 from equipment import Weapon, Armor, Crystal
 from abilities import Ability, AttackAbility, SupportAbility
+from random import choice
 import config
 import pygame
 import sys
@@ -41,7 +42,7 @@ class Character():
 
     def weapon_attack(self, target = None):
         if not randchek(self.weapon.accuracy):
-            return 0
+            return 0, 'next'
         dmg = int((0.5 * self.weapon.base_damage * self.stats['St']) ** 0.5 * self.bonuses['ATK'])
         dealt_damage, attack_result = target.take_damage(Damage(dmg, 'phys'))
         command = 'one_more' if attack_result else 'next'
@@ -99,15 +100,24 @@ class Character():
 
 
 class Enemy(Character, pygame.sprite.Sprite):
-    def __init__(self, name = 'Void', max_HP = 0, max_SP = 0, crystal = Crystal(), weapon = Weapon(), img_path = 'assets/images/enemyPlaceholder.png'):
+    def __init__(self, name = 'Void', max_HP = 0, max_SP = 0, attack_odds = 50, crystal = Crystal(), weapon = Weapon(), img_path = 'assets/images/enemyPlaceholder.png'):
         super().__init__(name, max_HP, max_SP, crystal, weapon)
         pygame.sprite.Sprite.__init__(self)
+        self.attack_odds = attack_odds
         self.EXP_reward = 0
         self.money_reward = 0
-        self.pattern = None
-        self.image = pygame.transform.scale(load_image(img_path), (100, 100))
+        self.image = pygame.transform.scale(load_image(img_path), (125, 125))
         self.rect = self.image.get_rect()
     
+    def attack_character(self, opponent_team):
+        chosen_character = choice(opponent_team)
+        print(chosen_character)
+        self.weapon_attack(chosen_character)
+    
+    def support_ally(self, ally_team):
+        print("hee ho")
+        return 'next'
+
     def sprite_center(self):
         #print(f'x: {self.rect.x} y: {self.rect.y} w: {self.rect.width} h:{self.rect.height}')
         return (self.rect.x + self.rect.width // 2 - 50), (self.rect.y + self.rect.height // 2 - 50)
@@ -121,9 +131,9 @@ class Ally(Character):
 
     def take_damage(self, incoming_damage):
         result = 0
-        evade_odds = self.bonuses['AG'] * self.Ag // 2
+        evade_odds = self.bonuses['AG'] * self.stats['Ag'] // 2
         if randchek(evade_odds):
-            return 0
+            return 0, result
         
         if self.crystal.weak_resist[incoming_damage.type] == -1:
             self.weakness_bonus = 1.5
@@ -131,7 +141,7 @@ class Ally(Character):
         elif self.crystal.weak_resist[incoming_damage.type] == 1:
             self.weakness_bonus = 0.2
         
-        taken_damage = round((incoming_damage * self.weakness_bonus) // (self.bonuses['DEF'] * (self.En + self.armor.defense) ** 0.5)) + 1
+        taken_damage = round((incoming_damage.value * self.weakness_bonus) // (self.bonuses['DEF'] * (self.stats['En'] + self.armor.defense) ** 0.5)) + 1
         self.HP -= taken_damage
         if self.HP <= 0:
             self.HP = 0
@@ -141,7 +151,7 @@ class Ally(Character):
         self.bonuses['ATK'] = 1
         self.bonuses['DEF'] = 1
         self.bonuses['AG'] = 1
-        return result
+        return taken_damage, result
     
     def guard(self):
         self.bonuses['DEF'] *= 2
