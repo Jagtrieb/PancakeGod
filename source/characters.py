@@ -46,8 +46,10 @@ class Character():
         dmg = int((0.5 * self.weapon.base_damage * self.stats['St']) ** 0.5 * self.bonuses['ATK'])
         dealt_damage, attack_result = target.take_damage(Damage(dmg, 'phys'))
         command = 'one_more' if attack_result else 'next'
-        return dealt_damage, command
-
+        if attack_result == 'died':
+            command = attack_result
+        return dealt_damage, command 
+    
     def use_skill(self, ability_id = -1,  target = None):
         ability = self.crystal.abilities[ability_id]
         if ability.cost > self.SP:
@@ -65,18 +67,20 @@ class Character():
         dmg = round((ability.base_damage * self.stats[ability.stat]) ** 0.5 * self.bonuses['ATK'])
         dealt_damage, attack_result = target.take_damage(Damage(dmg, element))
         command = 'one_more' if attack_result else 'next'
+        if attack_result == 'died':
+            command = attack_result
         return dealt_damage, command 
 
     def use_support_skill(self, ability = Ability(),  target = None):
         if type(ability) == HealAbility:
-            HP_healed = ability.value * (0.5 * self.stats[ability.stat]) ** 0.5
+            HP_healed = int(ability.value * (0.5 * self.stats[ability.stat]) ** 0.5)
             target.HP += HP_healed
             if target.HP > target.MaxHP:
                 target.HP = target.MaxHP
             return HP_healed, 'next'
 
     def take_damage(self, incoming_damage):
-        result = 0
+        result = ''
         evade_odds = self.bonuses['AG'] * self.stats['Ag'] // 2
         if randchek(evade_odds):
             return 0, result
@@ -115,6 +119,33 @@ class Enemy(Character, pygame.sprite.Sprite):
         self.money_reward = 0
         self.image = pygame.transform.scale(load_image(img_path), (125, 125))
         self.rect = self.image.get_rect()
+
+    def take_damage(self, incoming_damage):
+        result = ''
+        evade_odds = self.bonuses['AG'] * self.stats['Ag'] // 2
+        if randchek(evade_odds):
+            return 0, result
+        if self.crystal.weak_resist[incoming_damage.type] == -1:
+            self.weakness_bonus = 1.5
+            print("!WEAK!")
+            result = 1
+        elif self.crystal.weak_resist[incoming_damage.type] == 1:
+            self.weakness_bonus = 0.2
+            print("!RESIST!")
+
+        taken_damage = round((incoming_damage.value * self.weakness_bonus) / (self.bonuses['DEF'] * self.stats['En'] ** 0.5)) + 1
+        self.HP -= taken_damage
+        if self.HP <= 0:
+            self.HP = 0
+            self.state = 'dead'
+            self.image = pygame.transform.scale(load_image('assets/images/evilAdachi.png'), (125, 125))
+            return taken_damage, 'died'
+        self.weakness_bonus = 1
+        self.bonuses['ATK'] = 1
+        self.bonuses['DEF'] = 1
+        self.bonuses['AG'] = 1
+        print(f'{self.HP}/{self.MaxHP}')
+        return taken_damage, result
 
     def attack_character(self, opponent_team):
         chosen_character = choice(opponent_team)
@@ -181,6 +212,7 @@ class Ally(Character):
 
     def guard(self):
         self.bonuses['DEF'] *= 2
+        return 'next'
 
     def escape(self):
         pass

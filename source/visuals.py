@@ -184,6 +184,9 @@ class ActionFrame(UniversalFrame):
             if self.current_list[self.chosen_option] == "Attack":
                 dmg, command = self.active_char.weapon_attack(self.enemies.members[self.chosen_target])
                 self.default_state()
+            elif self.current_list[self.chosen_option] == 'Guard':
+                command = self.active_char.guard()
+                self.default_state()
             elif self.current_list[self.chosen_option] == 'Use Skill':
                 self.chosen_option = 0
                 self.shift = 0
@@ -198,13 +201,17 @@ class ActionFrame(UniversalFrame):
                 self.HINT_ACTIVE = False
                 self.choose_target_team()
                 self.chosen_target = 0
-                print(self.target_team)
+                #print(self.target_team)
             elif self.CHOOSING_ENEMY and not self.CHOOSING_ACTION and not self.CHOOSING_SKILL:
                 value, command = self.active_char.use_skill(self.chosen_option, self.target_team.members[self.chosen_target])
+                # if command == 'died' and type(self.target_team.members[self.chosen_target]) == characters.Enemy:
+                #     dead_dawg = self.enemies.members.pop(self.chosen_target)
+                #     if len(self.enemies.members) == 0:
+                #         return 'player_victory'
+                #     return dead_dawg
                 self.default_state()
-
-            if command == 'one_more':
-                print('ONE MORE!')
+            # if command == 'one_more':
+            #     print('ONE MORE!')
             return command
         elif key == pygame.K_x:
             if self.CHOOSING_ENEMY and not self.CHOOSING_ACTION:
