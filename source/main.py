@@ -21,17 +21,17 @@ def terminate():
 def battle_screen(team1 = 0, team2 = 0):
     c = equipment.Crystal()
     c1 = equipment.Crystal()
-    agi = abt.AttackAbility('Megidolaon', 30, 'Ma', 'Слабая атака огнём', 'fire', 10)
-    bufu = abt.AttackAbility('Samarecarm', 4, 'Ma', 'Слабая атака льдом', 'ice', 15)
-    garu = abt.AttackAbility('Mabufudyne', 4, 'Ma', 'Слабая атака ветром', 'wind', 15)
-    abilities = [agi, bufu, bufu, agi, agi, garu]
+    agi = abt.AttackAbility('Agi', 30, 'Ma', 'Слабая атака огнём', 'fire', 10)
+    bufu = abt.AttackAbility('Bufu', 4, 'Ma', 'Слабая атака льдом', 'ice', 15)
+    garu = abt.AttackAbility('Garu', 4, 'Ma', 'Слабая атака ветром', 'wind', 15)
+    dia = abt.HealAbility("Dia", 5, 'Ma', 50, 'Исцеление небольшого количества здоровья союзнику')
+    abilities = [agi, bufu, dia, agi, agi, garu]
     c1.abilities = abilities
-    c1.weak_resist['phys'] = -1
     c.weak_resist['ice'] = -1
     c.weak_resist['fire'] = 1
     wp = equipment.Weapon(50, 90)
-    team = party.PlayerParty([characters.MainCharacter('Joker', 125, 75, c1, wp), characters.Ally('Skull', 150, 50, c, wp), characters.Ally('Panther', 95, 100, c1, wp), characters.Ally('Queen', 100, 95, c1, wp)])
-    en_team = party.EnemyParty([characters.Enemy('Jack Frost', 100, 5, 50, c1, wp), characters.Enemy('Pyro Jack', 75, 5, 60, c, wp), characters.Enemy('King Frost', 150, 5, 50, c, wp), characters.Enemy('Shit eater', 10, 5, 50, c, wp)])
+    team = party.PlayerParty([characters.MainCharacter('Joker', 125, 75, c1, wp), characters.Ally('Skull', 150, 50, c1, wp), characters.Ally('Panther', 95, 100, c1, wp), characters.Ally('Queen', 100, 95, c1, wp)])
+    en_team = party.EnemyParty([characters.Enemy('Jack Frost', 100, 5, 70, c1, wp), characters.Enemy('Pyro Jack', 75, 5, 70, c1, wp), characters.Enemy('King Frost', 150, 5, 20, c1, wp), characters.Enemy('Shit eater', 10, 5, 15, c1, wp)])
     
 
     BATTLE_FINISHED = False
@@ -73,6 +73,7 @@ def battle_screen(team1 = 0, team2 = 0):
             if active_id == len(sequence):
                 active_id = 0
             sequence[active_id].isActive = True
+            action_frame.default_state()
             action_frame.set_active_char(sequence[active_id])
             if type(sequence[active_id]) != characters.Enemy:
                 action_frame.default_state()

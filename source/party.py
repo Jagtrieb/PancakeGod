@@ -19,8 +19,14 @@ class PlayerParty(Party):
     def check_party(self):
         if characters.MainCharacter not in self.members:
             return 0
+    
+    def __str__(self):
+        return 'Player Team'
 
 class EnemyParty(Party):
     def __init__(self, members=None):
         super().__init__(members)
         self.knocked_down = 0
+    
+    def __str__(self):
+        return 'Enemy Team'

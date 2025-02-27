@@ -1,6 +1,6 @@
 from additonals import randchek, Damage, load_image
 from equipment import Weapon, Armor, Crystal
-from abilities import Ability, AttackAbility, SupportAbility
+from abilities import Ability, AttackAbility, SupportAbility, HealAbility
 from random import choice
 import config
 import pygame
@@ -56,9 +56,9 @@ class Character():
         self.SP -= ability.cost
         if type(ability) == AttackAbility:
             return self.use_attack_skill(ability, target)
-        elif type(ability) == SupportAbility:
-            self.use_support_skill(ability, target)
-            return 2
+        elif issubclass(type(ability), SupportAbility):
+            return self.use_support_skill(ability, target)
+            
         
     def use_attack_skill(self, ability = AttackAbility(), target = None):
         element = ability.element
@@ -68,7 +68,12 @@ class Character():
         return dealt_damage, command 
 
     def use_support_skill(self, ability = Ability(),  target = None):
-        pass
+        if type(ability) == HealAbility:
+            HP_healed = ability.value * (0.5 * self.stats[ability.stat]) ** 0.5
+            target.HP += HP_healed
+            if target.HP > target.MaxHP:
+                target.HP = target.MaxHP
+            return HP_healed, 'next'
 
     def take_damage(self, incoming_damage):
         result = 0
@@ -87,14 +92,15 @@ class Character():
         self.HP -= taken_damage
         if self.HP <= 0:
             self.HP = 0
-            self.state = False
+            self.state = 'dead'
+            return taken_damage, 'died'
         self.weakness_bonus = 1
         self.bonuses['ATK'] = 1
         self.bonuses['DEF'] = 1
         self.bonuses['AG'] = 1
         print(f'{self.HP}/{self.MaxHP}')
         return taken_damage, result
-    
+
     def __str__(self):
         return self.name
 
@@ -104,18 +110,32 @@ class Enemy(Character, pygame.sprite.Sprite):
         super().__init__(name, max_HP, max_SP, crystal, weapon)
         pygame.sprite.Sprite.__init__(self)
         self.attack_odds = attack_odds
+        self.wp_skill_odds = 50
         self.EXP_reward = 0
         self.money_reward = 0
         self.image = pygame.transform.scale(load_image(img_path), (125, 125))
         self.rect = self.image.get_rect()
-    
+
     def attack_character(self, opponent_team):
         chosen_character = choice(opponent_team)
         print(chosen_character)
-        self.weapon_attack(chosen_character)
+        if randchek(self.wp_skill_odds):
+            return self.weapon_attack(chosen_character)
+        else:
+            chosen_skill = choice(self.crystal.abilities)
+            while type(chosen_skill) != AttackAbility:
+                chosen_skill = choice(self.crystal.abilities)
+            return self.use_attack_skill(chosen_skill, chosen_character)
     
     def support_ally(self, ally_team):
-        print("hee ho")
+        for ally in ally_team:
+            if ally.HP < ally.MaxHP:
+                for item in self.crystal.abilities:
+                    if type(item) == HealAbility:
+                        return self.use_support_skill(item, ally)
+                else:
+                    break
+        print('hee ho')
         return 'next'
 
     def sprite_center(self):
@@ -145,16 +165,25 @@ class Ally(Character):
         self.HP -= taken_damage
         if self.HP <= 0:
             self.HP = 0
-            self.state = False
+            self.state = 'dead'
+            self.battle_card.update()
+            return taken_damage, 'died'
         self.battle_card.update()
         self.weakness_bonus = 1
         self.bonuses['ATK'] = 1
         self.bonuses['DEF'] = 1
         self.bonuses['AG'] = 1
         return taken_damage, result
-    
+
+    def sprite_center(self):
+        #print(f'x: {self.rect.x} y: {self.rect.y} w: {self.rect.width} h:{self.rect.height}')
+        return (self.battle_card.rect.x + self.battle_card.rect.width // 2 - 50), (self.battle_card.rect.y + self.battle_card.rect.height // 2 - 50)
+
     def guard(self):
         self.bonuses['DEF'] *= 2
+
+    def escape(self):
+        pass
 
     def use_item(self):
         pass
@@ -165,38 +194,5 @@ class MainCharacter(Ally):
         super().__init__(name, max_HP, max_SP, crystal, weapon, armor, img_path)
         self.crystals = []
 
-    def escape(self):
-        pass
-
     def change_crystal(self):
         pass
-
-
-if __name__ == '__main__':
-    c = Crystal(3)
-    c1 = Crystal(30)
-    c1.weak_resist['fire'] = 0
-    wp = Weapon(25, 85)
-    chaar = Character('jokaa', 35, c, wp)
-    group = pygame.sprite.Group()
-    en = Enemy('churka', 25, c1, wp)
-    group.add(en)
-    en.rect.x = 100
-    en.rect.y = 100
-    f = AttackAbility("Agi", 4, 'Ma', 'fire', 50)
-
-
-    pygame.init()
-    size = width, height = config.WIDTH, config.HEIGHT
-    screen = pygame.display.set_mode(size)
-    clock = pygame.time.Clock()
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-        screen.fill((0, 0, 0))
-        group.draw(screen)
-        pygame.display.flip()
-        clock.tick(config.FPS)

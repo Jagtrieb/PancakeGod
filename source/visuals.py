@@ -1,6 +1,7 @@
 import pygame
 import config
 import characters
+import abilities
 from additonals import load_image
 
 class UniversalFrame(pygame.sprite.Sprite):
@@ -48,16 +49,18 @@ class CharacterFrame(UniversalFrame):
         pygame.draw.rect(self.screen, (226, 129, 205), (self.offset_X + 10, string_y, hp_len, 15))
 
 class ActionFrame(UniversalFrame):
-    def __init__(self, rect_value, actions = [], screen = None, enemy_team = None, character = None, img_path='assets/images/crosshair.png', img_size=(100, 100)):
+    def __init__(self, rect_value, actions = [], screen = None, team = None, enemy_team = None, character = None, img_path='assets/images/crosshair.png', img_size=(100, 100)):
         super().__init__(rect_value, img_path, img_size)
         self.actions = actions
         self.screen = screen
         self.chosen_option = 0
-        self.chosen_enemy = 0
+        self.chosen_target = 0
         self.current_list = self.actions
 
         self.active_char = character
+        self.team = team
         self.enemies = enemy_team
+        self.target_team = self.enemies
         self.screen = screen
 
         self.skill_lines = 6
@@ -78,8 +81,9 @@ class ActionFrame(UniversalFrame):
 
     def default_state(self):
         self.chosen_option = 0
-        self.chosen_enemy = 0
+        self.chosen_target = 0
         self.current_list = self.actions
+        self.target_team = self.enemies if type(self.active_char) != characters.Enemy else self.team
         self.CHOOSING_ENEMY = True
         self.CHOOSING_ACTION = True
         self.shift = 0
@@ -122,9 +126,9 @@ class ActionFrame(UniversalFrame):
                 self.shift -= 1
             self.update()
     
-    def change_chosen_enemy(self, value):
-        if (self.chosen_enemy + value) < len(self.enemies.members) and (self.chosen_enemy + value) >= 0:
-            self.chosen_enemy += value
+    def change_chosen_target(self, value):
+        if (self.chosen_target + value) < len(self.target_team.members) and (self.chosen_target + value) >= 0:
+            self.chosen_target += value
             self.update()
 
     def draw_hint(self):
@@ -139,7 +143,7 @@ class ActionFrame(UniversalFrame):
             y += interval
 
     def update(self):
-        self.rect.x, self.rect.y = self.enemies.members[self.chosen_enemy].sprite_center()
+        self.rect.x, self.rect.y = self.target_team.members[self.chosen_target].sprite_center()
         if self.CHOOSING_ACTION or self.CHOOSING_SKILL:
             pygame.draw.rect(self.screen, pygame.Color((255, 255, 255)), self.frame, 5)
             x = config.ACTION_X + 15
@@ -156,9 +160,14 @@ class ActionFrame(UniversalFrame):
                     self.screen.blit(text, (config.ACTION_WIDTH * config.SP_COST_SHIFT + config.ACTION_X - text.get_size()[0], y))
                 y += 2 * margin
         if self.HINT_ACTIVE:
-            #print(self.current_list[self.chosen_option].description)
             self.change_hint_text(self.current_list[self.chosen_option].description)
             self.draw_hint()
+
+    def choose_target_team(self):
+        if issubclass(type(self.active_char.crystal.abilities[self.chosen_option]), abilities.SupportAbility):
+            self.target_team = self.team
+        else:
+            self.target_team = self.enemies
 
     def key_events(self, key):
         if key == pygame.K_DOWN:
@@ -166,15 +175,14 @@ class ActionFrame(UniversalFrame):
         elif key == pygame.K_UP:
             self.change_chosen_action(-1)
         elif key == pygame.K_RIGHT and self.CHOOSING_ENEMY:
-            self.change_chosen_enemy(1)
+            self.change_chosen_target(1)
         elif key == pygame.K_LEFT and self.CHOOSING_ENEMY:
-            self.change_chosen_enemy(-1)
+            self.change_chosen_target(-1)
 
         elif key == pygame.K_z:
-            print(self.current_list[self.chosen_option])
             command = ''
             if self.current_list[self.chosen_option] == "Attack":
-                dmg, command = self.active_char.weapon_attack(self.enemies.members[self.chosen_enemy])
+                dmg, command = self.active_char.weapon_attack(self.enemies.members[self.chosen_target])
                 self.default_state()
             elif self.current_list[self.chosen_option] == 'Use Skill':
                 self.chosen_option = 0
@@ -188,9 +196,11 @@ class ActionFrame(UniversalFrame):
                 self.CHOOSING_ENEMY = True
                 self.CHOOSING_SKILL = False
                 self.HINT_ACTIVE = False
-                self.chosen_enemy = 0
+                self.choose_target_team()
+                self.chosen_target = 0
+                print(self.target_team)
             elif self.CHOOSING_ENEMY and not self.CHOOSING_ACTION and not self.CHOOSING_SKILL:
-                dmg, command = self.active_char.use_skill(self.chosen_option, self.enemies.members[self.chosen_enemy])
+                value, command = self.active_char.use_skill(self.chosen_option, self.target_team.members[self.chosen_target])
                 self.default_state()
 
             if command == 'one_more':
@@ -213,7 +223,7 @@ class ActionFrame(UniversalFrame):
         return self.actions[self.chosen]
 
 def draw_battle_layout(screen, player_team, enemy_team):
-    a_frame = ActionFrame((config.ACTION_X, config.ACTION_Y, config.ACTION_WIDTH, config.ACTION_HEIGHT), config.ACTIONS, screen, enemy_team)
+    a_frame = ActionFrame((config.ACTION_X, config.ACTION_Y, config.ACTION_WIDTH, config.ACTION_HEIGHT), config.ACTIONS, screen, player_team, enemy_team)
     screen.fill((0, 0, 0))
     battle_cards = draw_battle_cards(screen, player_team)
     a_frame.update()

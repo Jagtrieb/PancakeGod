@@ -16,18 +16,14 @@ class AttackAbility(Ability):
         self.base_damage = dmg
 
 class SupportAbility(Ability):
-    def __init__(self):
-        super().__init__()
-        self.value = 0
+    def __init__(self, name = 'void', cost = -1, stat = 'Ma', value = 0, description =''):
+        super().__init__(name, cost, stat, description)
+        self.value = value
     
     def act(self):
         pass
 
 class HealAbility(SupportAbility):
-    def __init__(self):
-        super().__init__()
-        self.value = 0
-    
-    def act(self):
-        pass
+    def __init__(self, name = 'void', cost = -1, stat = 'Ma', value = 0, description =''):
+        super().__init__(name, cost, stat, value, description)
 
